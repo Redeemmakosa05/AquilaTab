@@ -12,7 +12,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/smoke.mjs",
-    "test:browser": "node scripts/browser-qa.mjs"
+    "test:browser": "node scripts/browser-qa.mjs",
+    "record:demo": "node scripts/record-demo.mjs"
   },
   "dependencies": {
     "@paypal/paypal-js": "^9.1.0",

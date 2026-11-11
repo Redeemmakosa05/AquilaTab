@@ -1,137 +1,147 @@
 # AquilaTab — Scan. Split. Settle.
 
-AI-powered item-level restaurant bill splitting with independently approved, directly reconciled **PayPal Sandbox merchant payments**.
+AI-powered item-level restaurant bill splitting with independently approved **PayPal Sandbox merchant payments**. Public MIT source, persistent local data, and no mandatory hosting subscription.
 
-**Status:** The implementation, tests, and source are backed up to this public repository. Real OpenAI and PayPal verification remains blocked by missing credentials. Visual browser QA and public deployment are unverified. This is not yet a verified live hackathon submission.
+**$0 policy:** use manual mode or a billing-disabled Gemini Free Tier project, free PayPal developer/Sandbox accounts, and optional account-free Cloudflare Quick Tunnels. No paid Render service was created. Do not enable billing, add a credit card, or upgrade a service to continue. OpenAI is retained but disabled unless a separate paid-AI opt-in is deliberately enabled after approval.
 
-The Olive Room is fictional. Initial bills and diners are synthetic and entirely unpaid. No successful AI response or payment is simulated in the application.
+**Verified:** 60 automated tests, TypeScript, production build, restart-persistence smoke checks, and 42 real Chromium desktop/mobile checks. **Still pending:** genuine Gemini inference, genuine PayPal Sandbox transactions/webhooks, and the final public YouTube demo. Credentials are not configured in this build environment. No AI answer or payment success is fabricated.
 
-## What works independently of provider credentials
+## Run locally — no keys or credit card needed
 
-- Merchant dashboard with active tables, itemized bills, QR destinations, paid/outstanding balances, diner statuses, and audit events.
-- Editable receipt details, manual corrections, diner management, individual/shared item assignments, equal splitting, charge distribution, and exact reconciliation.
-- Confirmation locks the bill and creates one signed, expiring invitation per diner. Diners independently review their assigned items before payment.
-- Persistent SQLite records, isolated merchant sessions, optimistic version checks, authorization, same-origin mutation protection, and rate limiting.
-
-## Implemented provider integrations
-
-- OpenAI multimodal receipt extraction and strict structured allocation proposals; nullable prices and uncertainty block confirmation until reviewed. The model cannot initiate payments or decide final monetary amounts.
-- Official **PayPal JavaScript SDK v6**, with a browser-safe client token, eligibility checks, a one-time payment session, and explicit buyer interaction.
-- Distinct Orders v2 orders, server-side capture, independent canonical order/capture verification, signature-verified webhooks, stable request IDs, replay protection, duplicate-payment prevention, and partial/full table reconciliation.
-
-Provider contract tests mock responses. They do not prove a real API key, merchant account, Sandbox buyer, SDK popup, or live webhook works.
-
-## Quick start
-
-Use **Node.js 24 LTS** and npm. SQLite uses Node's built-in module; an experimental-module notice can appear.
+Use Node.js **24 LTS** and npm:
 
 ```sh
 git clone https://github.com/Redeemmakosa05/AquilaTab.git
 cd AquilaTab
 npm ci
 cp .env.example .env.local
-npm run dev
+npm run build
+npm start
 ```
 
-Open `http://localhost:3000`. Set `APP_URL` to the exact browser origin, including its port. No keys are needed for the manual workflow. Scan/AI operations and Sandbox checkout show clear setup errors until configured.
+Open `http://localhost:3000`. For development, use `npm run dev` instead. Windows users can copy `.env.example` to `.env.local` in their file manager.
 
-The first dashboard visit creates a separate merchant workspace using a cryptographically random, HTTP-only cookie. The cookie lasts 30 days and is secure in production. Keep that browser profile: clearing cookies loses access to that workspace and creates a new one. Opening a diner invitation does not create a merchant session. Opening the dashboard in a second browser creates a different merchant workspace. Team login, account recovery and production merchant onboarding are outside this prototype.
+The initial fictional Olive Room bill is $143.75. Manually edit its receipt, add/remove diners, assign individual/shared items, choose equal or proportional charges, and confirm the reviewed split. John owes $56.60, Mary $44.58, and Alex $42.57 in the provided itemized scenario. Confirmation locks amounts and produces independent signed invitations. Diners can review their shares without keys, but actual checkout waits for Sandbox credentials.
 
-## Configuration
+Each dashboard visitor receives a separate merchant workspace via a secure HTTP-only cookie lasting 30 days. Keep that browser profile: clearing cookies loses access to its workspace. Guest invitations grant only share access. Team login and account recovery are outside this prototype.
 
-Copy `.env.example` to `.env.local` for local development. On a host, set runtime environment variables through its secret settings. Never paste secret values into a chat or the application.
+## Enable real Gemini at $0
+
+1. Sign in to [Google AI Studio](https://aistudio.google.com/api-keys) and create a project/key that explicitly shows **Free Tier** and has **no linked billing account**. Do not click Set up billing or supply a card. If your account/region requires paid access, stop and keep manual mode.
+2. Confirm the reviewed model, `gemini-3.5-flash-lite`, is available on that project's current free tier. Google changes availability/quotas; the application cannot inspect your project's billing settings. The confirmation below is your operator attestation, not an automatic billing verification.
+3. Set these entries in ignored `.env.local` or your server's secure environment settings, then restart:
+
+```dotenv
+AI_PROVIDER=gemini
+GEMINI_API_KEY=YOUR_FREE_PROJECT_KEY
+GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_FREE_TIER_CONFIRMED=true
+ALLOW_PAID_AI=false
+```
+
+4. Upload a genuine, clearly identified USD receipt (JPEG/PNG/WebP, up to 6 MB), review the extraction, correct prices and uncertain fields, and test natural-language allocations.
+
+Only the explicitly reviewed model is allowed in the zero-cost profile. Quota exhaustion stops the call; there is no fallback to another provider or paid model. Pricing lists this model's standard free-tier text/image input and text output as free; free access remains account- and quota-dependent. Gemini 2.5 Flash was not chosen because current documentation marks it deprecated and schedules automatic routing on December 1, 2026.
+
+[Pricing](https://ai.google.dev/gemini-api/docs/pricing) · [Billing/tier management](https://ai.google.dev/gemini-api/docs/billing) · [Model](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)
+
+Free-tier inputs may be used to improve Google products under its terms. Use synthetic/non-sensitive receipts for this demonstration. The original image is sent to the configured provider for extraction and is not persisted by this server.
+
+## Configure genuine PayPal Sandbox — free test accounts
+
+1. Use [PayPal Developer](https://developer.paypal.com/dashboard/) to create an eligible Sandbox **business** account, such as a US test merchant, plus a separate Sandbox **personal buyer**. Use fake Sandbox balances and test accounts only. No real card or payment is required.
+2. Create/select a **Sandbox REST app owned by that business account**. Put its client ID and secret into `.env.local` or secure environment settings. Set the same business account's merchant/payer ID, not its email or REST client ID:
+
+```dotenv
+PAYPAL_CLIENT_ID=YOUR_SANDBOX_APP_CLIENT_ID
+PAYPAL_CLIENT_SECRET=YOUR_SANDBOX_APP_SECRET
+PAYPAL_MERCHANT_ID=YOUR_SANDBOX_BUSINESS_MERCHANT_ID
+```
+
+3. Restart. Open a diner's signed invitation, explicitly approve the fixed share, click Pay with PayPal, and sign in as a **Sandbox personal buyer**. SDK v6 checks eligibility and launches a one-time session. The public client ID is intentionally used in the browser as current PayPal documentation recommends for standard checkout; client secrets and REST access tokens stay on the server.
+4. After actual buyer approval, the backend captures and independently retrieves the canonical order. Only exact merchant/currency/allocation/amount and final completed capture matches count as paid. Inspect actual order/capture IDs and the partial outstanding balance. A paid invitation must not offer another checkout.
+5. For webhooks, use the free temporary HTTPS instructions below. Register `https://YOUR-TUNNEL/api/webhooks/paypal` on the **same Sandbox REST app**, set its returned `PAYPAL_WEBHOOK_ID`, and restart. Subscribe to `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, and `PAYMENT.CAPTURE.REVERSED`.
+6. Check real webhook deliveries and repeated delivery behavior. Use the merchant Reconcile action to recover verified captures after an interrupted callback. Finish all diner payments and verify $0 outstanding before claiming table closure.
+
+Settings reports configuration presence, not a live validation. If setup requests real merchant onboarding, paid access or a card, stop. Zimbabwean production merchant acceptance is not claimed; use an eligible test merchant. Never paste keys or buyer passwords into chat, GitHub, screenshots, or a recording.
+
+## Optional free HTTPS for temporary tests
+
+[Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) require no account, domain, or card. Install the official `cloudflared` binary using Cloudflare's free installation instructions. Keep the app running in one terminal and use another:
+
+```sh
+cloudflared tunnel --url http://localhost:3000 --protocol http2
+```
+
+Copy its actual `https://...trycloudflare.com` URL, set `APP_URL` in `.env.local` to that exact origin, and restart AquilaTab while leaving the tunnel running. Open the app through the **HTTPS tunnel URL** when creating/reviewing shares; using localhost with a different configured `APP_URL` correctly rejects mutations. Verify `/api/health` returns `{"status":"ok"}` through the tunnel before registering its webhook URL. Register/update PayPal's webhook whenever the tunnel URL changes. Keep `PAYPAL_WEBHOOK_ID` in the ignored environment file.
+
+Do not add an interactive email/login gate to the webhook route: PayPal cannot pass it. Use synthetic data; anyone with the temporary URL can access the demo entry point, while merchant mutations and payment shares retain their own capability checks. Stop `cloudflared` to close access. The tunnel is temporary and is not a durable judging URL.
+
+An actual tunnel attempt in this managed workspace failed at Cloudflare's registration endpoint with a TCP connection refusal. Local `/api/health` passed, but **no public tunnel URL or delivery was verified**. Try the documented command on your own computer/network; stop if it fails rather than switching to a paid product.
+
+## Judge-run access
+
+The [official rules](https://paypalaihackathon.devpost.com/rules) accept a functional runnable repository with complete instructions instead of public hosting. Judges still need access to the **actual working AI/payment workflow**, not just the manual UI.
+
+- Manual inspection and all tests run without provider credentials.
+- For real inference, use a billing-disabled Gemini Free Tier project as above.
+- For real payment, use free Sandbox business/buyer accounts as above.
+- Supply any entrant-provided **test-only** account access through the organizer-approved private judging/access channel; never commit API keys or login credentials to the public repository. Confirm with organizers that the chosen access method satisfies their testing requirement. Do not require judges to enable billing.
+- The application/database live on the judge's computer. No persistent cloud hosting is required. A temporary tunnel is needed only for webhook/remote-device tests.
+
+## Environment reference
 
 | Variable | Purpose |
 | --- | --- |
-| `APP_URL` | Exact origin, such as `http://localhost:3000` or a hosted HTTPS origin |
-| `DB_PATH` | Persistent local SQLite path, default `.data/aquilatab.sqlite` |
-| `OPENAI_API_KEY` | Server-only OpenAI key with model access and billing |
-| `OPENAI_MODEL` | Default `gpt-4.1-mini`; must support images and strict JSON schema |
-| `PAYPAL_CLIENT_ID` | Sandbox REST app client ID, retained on server in this implementation |
-| `PAYPAL_CLIENT_SECRET` | Server-only Sandbox REST app secret |
-| `PAYPAL_MERCHANT_ID` | Eligible Sandbox business account's merchant/payer ID |
-| `PAYPAL_WEBHOOK_ID` | Registered webhook ID for the same Sandbox REST app |
+| `APP_URL` | Exact browser origin; defaults to localhost for local setup |
+| `DB_PATH` | Persistent SQLite path, default `.data/aquilatab.sqlite` |
+| `AI_PROVIDER` | `manual` by default; `gemini` for the zero-cost AI path; `openai` only after paid-AI approval |
+| `GEMINI_API_KEY` | Server-only key from a billing-disabled free project |
+| `GEMINI_MODEL` | Reviewed profile: `gemini-3.5-flash-lite` |
+| `GEMINI_FREE_TIER_CONFIRMED` | Must be `true` only after checking the project's Free Tier and disabled billing |
+| `ALLOW_PAID_AI` | Default `false`; keep false for this $0 submission |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | Retained optional OpenAI integration; blocked by default |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | Sandbox app credentials; only the public client ID is returned for SDK initialization |
+| `PAYPAL_MERCHANT_ID` | Same test business account's merchant/payer ID |
+| `PAYPAL_WEBHOOK_ID` | Same Sandbox app's registered webhook ID |
 
-Settings & integrations reports configuration presence, not a verified live connection. Restart the server after changing environment variables. There is no live-payment switch; REST and SDK environments are fixed to Sandbox.
+No live PayPal switch exists. No service enables billing automatically. Free-quota and project-billing status cannot be established from an API key alone.
 
-## AI setup and data handling
+## Financial and data integrity
 
-1. Configure `OPENAI_API_KEY` on the server and a supported model. If provisioning through ChatGPT, enable OpenAI Developers and follow its key-approval workflow.
-2. Upload a clearly identified USD receipt as JPEG, PNG or WebP, up to 6 MB. File signatures and size are validated. Only the uploaded image is sent to OpenAI for extraction; the original image is not stored by the server. Review the provider's retention controls before uploading personal receipts.
-3. Review item names, quantities, unit and line prices, charges, discounts, total and uncertainty. Missing prices remain null. Confirming an uncertainty flag does not bypass missing-price or arithmetic checks.
-4. Add diners and request a split. The model receives item/diner IDs and instruction text; receipt names and text are treated as untrusted data. It returns assignments and a charge policy only. Server code validates all IDs and calculates all cents.
-5. Review the proposal before locking the bill. No AI output has authority to create or capture a PayPal order.
+All final calculations use integer cents and BigInt division/remainders. Itemized/shared allocations preserve exact totals; equal mode balances rounding across lines/charges. Tax/service/tip are equal or proportional; discounts follow item subtotals. Missing prices, unreadable totals, uncertainty, duplicates, quantity mismatches, unassigned items and inconsistent totals block confirmation. AI returns proposals only; humans approve and deterministic code calculates.
 
-Duplicate item names/IDs, missing prices, quantity arithmetic mismatches, unassigned items, possible duplicated service charges and total discrepancies block finalization. Legitimate duplicate lines can be consolidated into a correct quantity or distinguished manually. Unsupported or unidentifiable currencies are rejected instead of silently becoming USD.
+Confirmation locks the bill and creates HMAC-signed, database-bound invitations valid for four hours. The signing secret, sessions, bills and captures persist in SQLite. A stable request ID is used per order and capture; browser callbacks or redirects cannot mark a share paid. Canonical order IDs, invoice IDs, merchant IDs, USD amounts, final capture IDs and statuses are validated. Duplicate deliveries do not increment totals. Approval without capture remains unpaid. Refund/reversal events reopen a share for review and conservatively exclude its full amount; automated partial-refund accounting/replacement charges are outside scope.
 
-## PayPal Sandbox setup
+Use one Node 24 process and a persistent local filesystem. Keep `.data/` private and back it up with SQLite-aware tooling, including active WAL state. Team recovery, production merchant onboarding, multi-replica deployment and live payments are outside this prototype. Existing Docker/Compose examples remain optional local tools, not a paid deployment plan; they have not been executed here.
 
-1. Open [PayPal Developer](https://developer.paypal.com/dashboard/) and create an eligible Sandbox **business** account, such as a US test merchant. Create separate Sandbox **personal buyer** accounts. Do not use live accounts.
-2. In Apps & Credentials, choose **Sandbox** and create/select an app owned by that business account. Configure its client ID and secret on the server.
-3. Set `PAYPAL_MERCHANT_ID` to that business account's actual merchant/payer ID. It is not the client ID or email address. Orders explicitly name this recipient and verify the returned merchant ID.
-4. Restart the app. Confirm the three Sandbox variables are present in Settings. A diner must approve their share before the server issues a browser-safe SDK token or order.
-5. Publish the Node app behind HTTPS with persistent storage. Set `APP_URL` to its exact origin and restart. The v6 browser client token is domain-scoped to this host.
-6. Register `https://YOUR_HOST/api/webhooks/paypal` on the **same Sandbox app**. Subscribe to `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, and `PAYMENT.CAPTURE.REVERSED`. Configure the returned `PAYPAL_WEBHOOK_ID` and restart.
-7. Ensure deployment-wide authentication does not block the webhook with an interactive login page. The webhook route performs PayPal signature authentication itself.
-8. Open a diner invitation in a separate browser/device. Approve the fixed share, click Pay with PayPal, log in as a Sandbox buyer, and explicitly authorize the payment. Wait for verified capture before claiming success.
-9. Inspect the real order/capture IDs and partial balance. Reopen the paid link: it must show a verified receipt without checkout. Use the merchant Reconcile action to recover a canonical completed capture after an interrupted callback or webhook.
-10. Complete the other diners' payments and verify exact full settlement. Record actual results; never edit payment records to manufacture the judging scenario.
-
-If business-account setup, browser-safe client-token issuance, buyer eligibility or checkout fails, record the exact provider error. Current test results do not establish that these configurations succeed. PayPal documentation lists Zimbabwe as send-only for merchant receipts; this prototype does not claim production Zimbabwean merchant acceptance.
-
-## Money and payment integrity
-
-All authoritative amounts are integer minor units. BigInt division/remainders avoid floating-point products. Itemized mode divides each line among its assigned diners in stable order. Equal mode balances remainder cents across every line and charge so equal shares differ by at most a cent in ordinary equal, undiscounted bills. Tax/service/tip can be equal or proportional to assigned item subtotals; equal mode forces equal charges. Discounts follow item subtotals. Every share must be positive and the sum must exactly match the printed total.
-
-Confirmation atomically locks amounts and generates HMAC-signed, database-bound invitations valid for **four hours**. The signing secret is cryptographically generated and stored only in SQLite so signatures survive restarts. Links are bearer capabilities: share privately. There is no silent token renewal or replacement-charge override.
-
-States: `PENDING → CREATING → CHECKOUT → APPROVED → PAID`, plus `CANCELLED`, `FAILED`, `REFUNDED`, and `REVERSED`. An uncertain order-creation response retries with the same request ID throughout the invitation window; it does not create a second attempt. Cancellation safely reuses the existing order. Approval without completed capture is unpaid. Failed statuses come from authenticated denial events; browser/network errors display an error without guessing a financial result.
-
-Capture validation checks the stored order ID, exactly one purchase unit, allocation ID, bill/share invoice ID, USD amount, and merchant recipient. A separate GET after capture verifies a single completed, final, exact-amount capture. Order/capture IDs are unique in SQLite. Duplicate requests or webhook deliveries do not increment totals. No redirect or browser assertion marks payment complete.
-
-Refund/reversal events reopen the share for merchant review and exclude its entire amount from verified settlement, even for partial refunds. Automatic partial-refund accounting, new replacement charges, settlement payouts and production dispute management are outside scope.
-
-## APIs and SDK
-
-- OpenAI `POST /v1/chat/completions`, images plus strict JSON schema.
-- PayPal `POST https://api-m.sandbox.paypal.com/v1/oauth2/token` for server access; `response_type=client_token` and `domains[]` for a browser-safe SDK token. REST access tokens and client secrets never go to the browser.
-- `POST /v2/checkout/orders`, one immutable share per order, with `PayPal-Request-Id`.
-- `GET /v2/checkout/orders/{id}` for canonical validation and reconciliation.
-- `POST /v2/checkout/orders/{id}/capture`, with a distinct stable request ID.
-- `POST /v1/notifications/verify-webhook-signature` before processing every event.
-- Official SDK v6 through `@paypal/paypal-js/sdk-v6`, loading `https://www.sandbox.paypal.com/web-sdk/v6/core`, checking eligibility and starting `createPayPalOneTimePaymentSession` on explicit button click. `start()` receives a Promise resolving to `{orderId}`.
-
-References: [Orders v2](https://developer.paypal.com/docs/api/orders/v2/), [SDK v6 setup](https://developer.paypal.com/sdk/js/set-up/), [Webhooks](https://developer.paypal.com/docs/api/webhooks/v1/), [Payment Links and Buttons](https://developer.paypal.com/api/payment-links-buttons/). Optional merchant-hosted reusable payment links were considered; signed diner invitations with fixed Orders v2 allocations provide tighter one-share reconciliation and duplicate controls. This application does not use reusable merchant payment links.
-
-## Verification
+## Tests, browser QA and video
 
 ```sh
 npm test
 npm run typecheck
 npm run build
 npm run smoke
+npx playwright install chromium
+npm run test:browser
 ```
 
-The executed result is **49 tests passed**, TypeScript passed, production build passed, and five real HTTP smoke checks passed. HTTP tests verify served assets, real secure session cookies, unauthorized-write rejection, independent invitations, honest missing-provider states, and SQLite persistence across a process restart. `npm audit --omit=dev` reported zero production dependency vulnerabilities.
+Browser QA uses an installed `/usr/bin/chromium` when available, or Playwright's downloaded Chromium. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if needed. The QA runner starts a temporary local production server/database and forcibly disables all provider credentials. Its images/report are written to ignored `.qa-artifacts/`; it never fabricates a paid state.
 
-OpenAI and PayPal unit tests mock network responses. Actual image inference, real Sandbox checkout/capture, live webhook delivery, multi-device browser checkout and responsive visual behavior remain unverified. The managed browser tool and Sites helper scripts were absent; no preview/browser path was improvised. See [verification](docs/VERIFICATION.md).
+The executed results are **60 automated tests**, production build/type checks, five restart-persistence HTTP checks and **42 Chromium checks** at desktop 1440×1000 and emulated mobile 390×844/360×800, with no page exceptions or horizontal overflow. Physical iOS/Android, genuine Gemini/OpenAI calls and genuine PayPal SDK/buyer/webhook flows remain unverified. Provider unit tests mock responses and do not establish live success.
 
-## Persistent deployment
+A clearly watermarked [manual rehearsal](docs/media/manual-rehearsal.webm) demonstrates the real local interface and explicitly shows that AI/payment credentials are pending. It is **not the final live-integration video**. Re-record the genuine workflow using [the under-three-minute plan](docs/DEMO.md), then upload the final video publicly to YouTube as the official rules require. No YouTube upload or Devpost submission has been made.
 
-Run one Node 24 process with a persistent local filesystem and writable `DB_PATH`. Do not use an ephemeral/serverless filesystem, independent replicas, or SQLite on a network filesystem. Back up SQLite with database-aware tooling; copying only the main file while WAL writes are active is not a consistent backup. Merchant sessions and the signing secret are in the database: keep it private and preserve it across restarts.
+## Submission and source
 
-For a Node host, run `npm ci`, `npm run build`, then `npm start` with production environment variables and an HTTPS reverse proxy. Next.js standalone output is also generated. Dockerfile/Compose examples are included but have not been executed here. Compose binds loopback and stores SQLite in a named volume; configure TLS and public webhook access before sharing.
+- [Official rules](https://paypalaihackathon.devpost.com/rules)
+- [Free setup checklist](docs/SETUP-CHECKLIST.md)
+- [Verification evidence](docs/VERIFICATION.md)
+- [Integration documentation review](docs/INTEGRATION-REVIEW.md)
+- [Final submission checklist](docs/SUBMISSION-CHECKLIST.md)
+- [Devpost draft](docs/DEVPOST.md)
+- [Demo plan](docs/DEMO.md)
+- [MIT license](LICENSE)
+- [Download source ZIP](https://github.com/Redeemmakosa05/AquilaTab/archive/refs/heads/main.zip)
 
-There is **no verified deployed demo URL**. The available Sites runtime targets Cloudflare Workers, which cannot run this Node/SQLite build unchanged, and its setup helpers were absent. Use a persistent Node host or explicitly port the database/runtime before deploying there. GitHub source is already public; hosting credentials are not available.
-
-## Permanent source and downloads
-
-Each milestone was committed, pushed and verified against `origin/main` before continuing. Download current source using GitHub's **Code → Download ZIP**, or pin a specific commit from the repository history. Generated build files, runtime database, secrets and dependency directories are excluded. The blank `.env.example` template is intentionally public.
-
-- Repository: https://github.com/Redeemmakosa05/AquilaTab
-- Current branch ZIP: https://github.com/Redeemmakosa05/AquilaTab/archive/refs/heads/main.zip
-- [Setup checklist](docs/SETUP-CHECKLIST.md)
-- [Devpost description](docs/DEVPOST.md)
-- [Under-three-minute demo plan](docs/DEMO.md)
-- [Milestone checkpoint](docs/CHECKPOINT.md)
-- MIT [LICENSE](LICENSE)
+Each milestone is committed, pushed and checked against the remote branch. A ZIP only in the temporary workspace is never treated as a permanent backup. This submission is **not yet live-integration verified**.
