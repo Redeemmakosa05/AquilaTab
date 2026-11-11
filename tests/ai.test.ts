@@ -8,6 +8,8 @@ const image = () =>
     { type: "image/png" },
   );
 function mock(value: unknown) {
+  process.env.AI_PROVIDER = "openai";
+  process.env.ALLOW_PAID_AI = "true";
   process.env.OPENAI_API_KEY = "test-only";
   const fetcher = vi.fn(async () =>
     Response.json({
@@ -22,6 +24,8 @@ function mock(value: unknown) {
 afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.OPENAI_API_KEY;
+  delete process.env.AI_PROVIDER;
+  delete process.env.ALLOW_PAID_AI;
 });
 describe("AI provider contracts, mocked only", () => {
   it("sends image data and strict schemas to OpenAI", async () => {
@@ -73,6 +77,8 @@ describe("AI provider contracts, mocked only", () => {
   });
   it("reports missing credentials, refusal and provider errors honestly", async () => {
     delete process.env.OPENAI_API_KEY;
+    process.env.AI_PROVIDER = "openai";
+    process.env.ALLOW_PAID_AI = "true";
     await expect(extract(image())).rejects.toThrow("not configured");
     process.env.OPENAI_API_KEY = "test";
     vi.stubGlobal(

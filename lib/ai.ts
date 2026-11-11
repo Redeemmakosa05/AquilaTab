@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Fault, receiptSchema, type BillData } from "./core";
+import { gemini, geminiReady } from "./gemini";
 const amount = { type: "integer", minimum: 0, maximum: 10_000_000 };
 const receiptOutput = {
   type: "object",
@@ -40,7 +41,32 @@ const receiptOutput = {
     total: { anyOf: [amount, { type: "null" }] },
   },
 };
+export function aiStatus() {
+  const provider = process.env.AI_PROVIDER || "manual";
+  if (provider === "gemini")
+    return { provider, label: "Gemini Free Tier", ready: geminiReady() };
+  if (provider === "openai")
+    return {
+      provider,
+      label: "OpenAI (paid opt-in)",
+      ready:
+        !!process.env.OPENAI_API_KEY && process.env.ALLOW_PAID_AI === "true",
+    };
+  return { provider: "manual", label: "Manual mode", ready: false };
+}
 async function model(messages: unknown[], schema: unknown, name: string) {
+  const status = aiStatus();
+  if (status.provider === "manual")
+    throw new Fault(
+      503,
+      "AI is in manual mode. Configure Gemini on a billing-disabled Free Tier project to enable real receipt reading and allocation proposals.",
+    );
+  if (status.provider === "gemini") return gemini(messages, schema);
+  if (process.env.ALLOW_PAID_AI !== "true")
+    throw new Fault(
+      503,
+      "OpenAI is disabled by the zero-cost policy. Do not enable paid AI without explicit approval. Use Gemini Free Tier or manual mode.",
+    );
   if (!process.env.OPENAI_API_KEY)
     throw new Fault(
       503,

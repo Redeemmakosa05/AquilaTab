@@ -37,6 +37,10 @@ const server = spawn(
       APP_URL: origin,
       DB_PATH: join(directory, "qa.sqlite"),
       OPENAI_API_KEY: "",
+      AI_PROVIDER: "manual",
+      ALLOW_PAID_AI: "false",
+      GEMINI_API_KEY: "",
+      GEMINI_FREE_TIER_CONFIRMED: "false",
       PAYPAL_CLIENT_ID: "",
       PAYPAL_CLIENT_SECRET: "",
       PAYPAL_MERCHANT_ID: "",
@@ -177,16 +181,14 @@ try {
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=",
       "base64",
     );
-    await page
-      .getByLabel("Receipt image", { exact: true })
-      .setInputFiles({
-        name: "synthetic-pixel.png",
-        mimeType: "image/png",
-        buffer: pixel,
-      });
+    await page.getByLabel("Receipt image", { exact: true }).setInputFiles({
+      name: "synthetic-pixel.png",
+      mimeType: "image/png",
+      buffer: pixel,
+    });
     await page
       .getByRole("alert")
-      .filter({ hasText: "OpenAI is not configured" })
+      .filter({ hasText: "AI is in manual mode" })
       .waitFor();
     await page.getByRole("button", { name: "Dismiss error" }).click();
     checks.push(
@@ -261,7 +263,7 @@ try {
       .click();
     await page
       .getByRole("alert")
-      .filter({ hasText: "OpenAI is not configured" })
+      .filter({ hasText: "AI is in manual mode" })
       .waitFor();
     await page.getByRole("button", { name: "Dismiss error" }).click();
     await page.getByRole("checkbox").check();

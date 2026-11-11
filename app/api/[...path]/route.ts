@@ -26,7 +26,7 @@ import {
   reconcile,
   webhook,
 } from "@/lib/paypal";
-import { extract, interpret } from "@/lib/ai";
+import { aiStatus, extract, interpret } from "@/lib/ai";
 import { json, merchant, reply, sameOrigin } from "@/lib/http";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +36,10 @@ async function handle(req: Request, path: string[]) {
   if (kind === "webhooks" && id === "paypal" && method === "POST")
     return reply(await webhook(req, await json(req, 1000000)));
   if (method === "POST") sameOrigin(req);
+  if (kind === "health" && method === "GET") {
+    db().prepare("SELECT 1 AS ready").get();
+    return reply({ status: "ok" });
+  }
   if (kind === "dashboard" && method === "GET") {
     const owner = await merchant(true);
     const rows = db()
@@ -44,7 +48,9 @@ async function handle(req: Request, path: string[]) {
     return reply({
       bills: rows.map(snapshot),
       config: {
-        ai: !!process.env.OPENAI_API_KEY,
+        ai: aiStatus().ready,
+        aiProvider: aiStatus().provider,
+        aiLabel: aiStatus().label,
         paypal: paypalReady(),
         webhook: !!process.env.PAYPAL_WEBHOOK_ID,
       },

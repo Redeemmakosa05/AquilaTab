@@ -39,6 +39,10 @@ beforeAll(() => {
   for (const key of [
     "APP_URL",
     "OPENAI_API_KEY",
+    "AI_PROVIDER",
+    "ALLOW_PAID_AI",
+    "GEMINI_API_KEY",
+    "GEMINI_FREE_TIER_CONFIRMED",
     "PAYPAL_CLIENT_ID",
     "PAYPAL_CLIENT_SECRET",
     "PAYPAL_MERCHANT_ID",
@@ -54,6 +58,13 @@ beforeEach(async () => {
   merchantCookie = session.token;
 });
 describe("merchant and diner routes", () => {
+  it("checks SQLite readiness without creating a merchant session or exposing configuration", async () => {
+    session.token = "";
+    const result = await request("health");
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({ status: "ok" });
+    expect(session.token).toBe("");
+  });
   it("creates and reuses a persistent merchant workspace", async () => {
     const result = await request("dashboard");
     expect(result.status).toBe(200);

@@ -89,6 +89,8 @@ export default function Workspace() {
     [draft, setDraft] = useState<BillData | null>(null),
     [config, setConfig] = useState({
       ai: false,
+      aiProvider: "manual",
+      aiLabel: "Manual mode",
       paypal: false,
       webhook: false,
     }),
@@ -588,8 +590,8 @@ export default function Workspace() {
                         <p>
                           <LockKeyhole size={11} />
                           {config.ai
-                            ? "Images are sent to OpenAI for extraction."
-                            : "Connect OpenAI to scan. Manual editing is available."}
+                            ? "Images are sent to the configured AI provider."
+                            : "Configure Gemini Free Tier to scan. Manual editing is available."}
                         </p>
                         {image && (
                           <img src={image} alt="Your receipt for review" />
@@ -988,8 +990,8 @@ export default function Workspace() {
                         <div>
                           <span>
                             {config.ai
-                              ? "Powered by OpenAI"
-                              : "Connect AI for natural language"}
+                              ? `Powered by ${config.aiLabel}`
+                              : "Manual mode · AI not configured"}
                           </span>
                           <button
                             onClick={() => void applyAI()}
@@ -1380,11 +1382,11 @@ export default function Workspace() {
                     </div>
                     {[
                       {
-                        name: "OpenAI",
+                        name: config.aiLabel,
                         ready: config.ai,
                         description:
-                          "Multimodal receipt reading and structured allocation proposals.",
-                        keys: "OPENAI_API_KEY · OPENAI_MODEL",
+                          "Gemini Free Tier or manual mode; paid AI is disabled by default.",
+                        keys: "AI_PROVIDER · GEMINI_API_KEY · GEMINI_FREE_TIER_CONFIRMED",
                       },
                       {
                         name: "PayPal Sandbox · SDK v6",
