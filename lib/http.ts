@@ -1,7 +1,46 @@
-import {cookies} from 'next/headers';
-import {Fault} from './core';
-import {db,hash,seed,uid} from './db';
-export async function merchant(create=false){const jar=await cookies(),token=jar.get('aq_session')?.value;const current=token?db().prepare('SELECT owner FROM sessions WHERE hash=? AND expires>?').get(hash(token),Date.now()) as {owner:string}|undefined:undefined;if(current)return current.owner;if(!create)throw new Fault(401,'Open your merchant workspace to sign in');const owner=uid(),secret=uid()+uid();db().prepare('INSERT INTO sessions(hash,owner,expires) VALUES(?,?,?)').run(hash(secret),owner,Date.now()+30*86400000);seed(owner);jar.set('aq_session',secret,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:30*86400});return owner}
-export function sameOrigin(req:Request){const expected=new URL(process.env.APP_URL||req.url).origin;if(req.headers.get('origin')!==expected)throw new Fault(403,'Cross-origin request rejected')}
-export async function json(req:Request,max=100000){if(!req.headers.get('content-type')?.startsWith('application/json'))throw new Fault(415,'Expected JSON');const raw=await req.text();if(raw.length>max)throw new Fault(413,'Request too large');try{return JSON.parse(raw)}catch{throw new Fault(400,'Invalid JSON')}}
-export const reply=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
+import { cookies } from "next/headers";
+import { Fault } from "./core";
+import { db, hash, seed, uid } from "./db";
+export async function merchant(create = false) {
+  const jar = await cookies(),
+    token = jar.get("aq_session")?.value;
+  const current = token
+    ? (db()
+        .prepare("SELECT owner FROM sessions WHERE hash=? AND expires>?")
+        .get(hash(token), Date.now()) as { owner: string } | undefined)
+    : undefined;
+  if (current) return current.owner;
+  if (!create) throw new Fault(401, "Open your merchant workspace to sign in");
+  const owner = uid(),
+    secret = uid() + uid();
+  db()
+    .prepare("INSERT INTO sessions(hash,owner,expires) VALUES(?,?,?)")
+    .run(hash(secret), owner, Date.now() + 30 * 86400000);
+  seed(owner);
+  jar.set("aq_session", secret, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 30 * 86400,
+  });
+  return owner;
+}
+export function sameOrigin(req: Request) {
+  const expected = new URL(process.env.APP_URL || req.url).origin;
+  if (req.headers.get("origin") !== expected)
+    throw new Fault(403, "Cross-origin request rejected");
+}
+export async function json(req: Request, max = 100000) {
+  if (!req.headers.get("content-type")?.startsWith("application/json"))
+    throw new Fault(415, "Expected JSON");
+  const raw = await req.text();
+  if (raw.length > max) throw new Fault(413, "Request too large");
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Fault(400, "Invalid JSON");
+  }
+}
+export const reply = (value: unknown, status = 200) =>
+  Response.json(value, { status, headers: { "Cache-Control": "no-store" } });

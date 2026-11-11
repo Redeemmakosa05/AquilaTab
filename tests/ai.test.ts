@@ -1,16 +1,121 @@
-import {afterEach,describe,expect,it,vi} from 'vitest';
-import {extract,interpret} from '../lib/ai';
-import {calculate,sample} from '../lib/core';
-const image=()=>new File([new Uint8Array([137,80,78,71,13,10,26,10,0])],'receipt.png',{type:'image/png'});
-function mock(value:unknown){process.env.OPENAI_API_KEY='test-only';const fetcher=vi.fn(async()=>Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(value)}}]}));vi.stubGlobal('fetch',fetcher);return fetcher}
-afterEach(()=>{vi.unstubAllGlobals();delete process.env.OPENAI_API_KEY});
-describe('AI provider contracts, mocked only',()=>{
- it('sends image data and strict schemas to OpenAI',async()=>{const fetcher=mock(sample.receipt);expect(await extract(image())).toEqual(sample.receipt);const calls=fetcher.mock.calls as unknown as [string,RequestInit][];expect(calls[0][0]).toBe('https://api.openai.com/v1/chat/completions');const body=JSON.parse(calls[0][1].body as string);expect(body.response_format.json_schema.strict).toBe(true);expect(body.messages[1].content[1].image_url.url).toMatch(/^data:image\/png;base64,/)});
- it('preserves null and uncertainty for mandatory review',async()=>{const receipt=structuredClone(sample.receipt);receipt.items[0].unit=null;receipt.items[0].uncertain=true;mock(receipt);const data=await extract(image());expect(data.items[0].unit).toBeNull();expect(()=>calculate({...sample,receipt:data})).toThrow()});
- it('rejects unsupported currencies instead of assuming USD',async()=>{for(const currency of ['EUR','UNKNOWN']){mock({...sample.receipt,currency});await expect(extract(image())).rejects.toThrow('USD')}});
- it('rejects invalid financial schemas',async()=>{mock({...sample.receipt,total:1.75});await expect(extract(image())).rejects.toThrow()});
- it('rejects oversized or disguised files',async()=>{await expect(extract(new File(['fake'],'image.jpg'))).rejects.toThrow('valid');await expect(extract(new File([new Uint8Array(6*1024*1024+1)],'big.png'))).rejects.toThrow('6 MB')});
- it('reports missing credentials, refusal and provider errors honestly',async()=>{delete process.env.OPENAI_API_KEY;await expect(extract(image())).rejects.toThrow('not configured');process.env.OPENAI_API_KEY='test';vi.stubGlobal('fetch',vi.fn(async()=>Response.json({choices:[{finish_reason:'stop',message:{refusal:'unreadable'}}]})));await expect(extract(image())).rejects.toThrow('confidently');vi.stubGlobal('fetch',vi.fn(async()=>new Response('{}',{status:401})));await expect(extract(image())).rejects.toThrow('could not process')});
- it('returns assignments while deterministic code computes money',async()=>{mock({assignments:Object.entries(sample.assignments).map(([itemId,dinerIds])=>({itemId,dinerIds})),charges:'equal'});const proposed=await interpret('John burgers, Mary pizza, Alex pasta. Share sides.',sample);expect(calculate({...sample,...proposed}).map(s=>s.total)).toEqual([5660,4458,4257]);expect(proposed).not.toHaveProperty('amount')});
- it('rejects duplicate and unknown AI allocations',async()=>{mock({assignments:[{itemId:'burgers',dinerIds:['john']},{itemId:'burgers',dinerIds:['mary']}],charges:'equal'});await expect(interpret('split',sample)).rejects.toThrow('duplicate');mock({assignments:sample.receipt.items.map(i=>({itemId:i.id,dinerIds:['attacker']})),charges:'equal'});const data=await interpret('split',sample);expect(()=>calculate({...sample,...data})).toThrow('Invalid diner')});
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { extract, interpret } from "../lib/ai";
+import { calculate, sample } from "../lib/core";
+const image = () =>
+  new File(
+    [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0])],
+    "receipt.png",
+    { type: "image/png" },
+  );
+function mock(value: unknown) {
+  process.env.OPENAI_API_KEY = "test-only";
+  const fetcher = vi.fn(async () =>
+    Response.json({
+      choices: [
+        { finish_reason: "stop", message: { content: JSON.stringify(value) } },
+      ],
+    }),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  return fetcher;
+}
+afterEach(() => {
+  vi.unstubAllGlobals();
+  delete process.env.OPENAI_API_KEY;
+});
+describe("AI provider contracts, mocked only", () => {
+  it("sends image data and strict schemas to OpenAI", async () => {
+    const fetcher = mock(sample.receipt);
+    expect(await extract(image())).toEqual(sample.receipt);
+    const calls = fetcher.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toBe("https://api.openai.com/v1/chat/completions");
+    const body = JSON.parse(calls[0][1].body as string);
+    expect(body.response_format.json_schema.strict).toBe(true);
+    expect(body.messages[1].content[1].image_url.url).toMatch(
+      /^data:image\/png;base64,/,
+    );
+  });
+  it("preserves null and uncertainty for mandatory review", async () => {
+    const receipt = structuredClone(sample.receipt);
+    receipt.items[0].unit = null;
+    receipt.items[0].uncertain = true;
+    mock(receipt);
+    const data = await extract(image());
+    expect(data.items[0].unit).toBeNull();
+    expect(() => calculate({ ...sample, receipt: data })).toThrow();
+  });
+  it("rejects unsupported currencies instead of assuming USD", async () => {
+    for (const currency of ["EUR", "UNKNOWN"]) {
+      mock({ ...sample.receipt, currency });
+      await expect(extract(image())).rejects.toThrow("USD");
+    }
+  });
+  it("rejects invalid financial schemas", async () => {
+    mock({ ...sample.receipt, total: 1.75 });
+    await expect(extract(image())).rejects.toThrow();
+  });
+  it("rejects oversized or disguised files", async () => {
+    await expect(extract(new File(["fake"], "image.jpg"))).rejects.toThrow(
+      "valid",
+    );
+    await expect(
+      extract(new File([new Uint8Array(6 * 1024 * 1024 + 1)], "big.png")),
+    ).rejects.toThrow("6 MB");
+  });
+  it("reports missing credentials, refusal and provider errors honestly", async () => {
+    delete process.env.OPENAI_API_KEY;
+    await expect(extract(image())).rejects.toThrow("not configured");
+    process.env.OPENAI_API_KEY = "test";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          choices: [
+            { finish_reason: "stop", message: { refusal: "unreadable" } },
+          ],
+        }),
+      ),
+    );
+    await expect(extract(image())).rejects.toThrow("confidently");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 401 })),
+    );
+    await expect(extract(image())).rejects.toThrow("could not process");
+  });
+  it("returns assignments while deterministic code computes money", async () => {
+    mock({
+      assignments: Object.entries(sample.assignments).map(
+        ([itemId, dinerIds]) => ({ itemId, dinerIds }),
+      ),
+      charges: "equal",
+    });
+    const proposed = await interpret(
+      "John burgers, Mary pizza, Alex pasta. Share sides.",
+      sample,
+    );
+    expect(calculate({ ...sample, ...proposed }).map((s) => s.total)).toEqual([
+      5660, 4458, 4257,
+    ]);
+    expect(proposed).not.toHaveProperty("amount");
+  });
+  it("rejects duplicate and unknown AI allocations", async () => {
+    mock({
+      assignments: [
+        { itemId: "burgers", dinerIds: ["john"] },
+        { itemId: "burgers", dinerIds: ["mary"] },
+      ],
+      charges: "equal",
+    });
+    await expect(interpret("split", sample)).rejects.toThrow("duplicate");
+    mock({
+      assignments: sample.receipt.items.map((i) => ({
+        itemId: i.id,
+        dinerIds: ["attacker"],
+      })),
+      charges: "equal",
+    });
+    const data = await interpret("split", sample);
+    expect(() => calculate({ ...sample, ...data })).toThrow("Invalid diner");
+  });
 });

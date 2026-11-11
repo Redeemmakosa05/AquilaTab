@@ -12,3 +12,6 @@ Milestone 2: actual OpenAI multimodal and strict structured allocation calls add
 
 Milestone 2 verified remotely: ec8750706bbe9ce5a4b113ff12283c05341d682c.
 Milestone 3: official PayPal SDK v6, sandbox-only OAuth/browser-safe client tokens, Orders v2, canonical capture validation, authenticated/deduplicated webhooks, cancellation, denial and refund states implemented. 34 tests, TypeScript and production build pass. Provider tests mock responses; genuine AI and PayPal calls remain blocked by absent credentials.
+
+Milestone 3 verified remotely: 919fc46511851eea7dc6497cbedd117bc1694549.
+Milestone 4: 49 tests pass, including application authorization, CSRF, immutable bills, independent diner review, order substitution, cancellations, denials, exact partial/full settlement and webhook replay. TypeScript, production build and five real HTTP smoke checks pass. A full process restart preserves sessions, locked bills, invitation signatures and approvals. Source formatted for review and interface text contrast improved. Real provider calls and visual browser QA remain unverified; required managed browser tool is unavailable.

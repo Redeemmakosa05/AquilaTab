@@ -1,18 +1,313 @@
-'use client';
-import {useEffect,useState} from 'react';
-import {CheckCircle2,LoaderCircle,LockKeyhole,ReceiptText,ShieldCheck,TriangleAlert} from 'lucide-react';
-import Checkout from './checkout';
-import {Brand} from './brand';
-import {api} from '@/lib/client';
-import {money,type Receipt} from '@/lib/core';
-export type PaymentData={name:string,amount:number,detail:{subtotal:number,tax:number,service:number,tip:number,discount:number,items:{name:string,amount:number}[]},reviewed:boolean,verified:boolean,state:string,restaurant:string,table:number,bill:string,paid:number,total:number,outstanding:number,closed:boolean,captureId:string|null,paypalReady:boolean};
-type TableData={id:string,number:number,receipt:Receipt,paid:number,outstanding:number,closed:boolean,diners:{name:string,amount:number,verified:boolean,state:string}[]};
-export default function Guest({kind,id}:{kind:'pay'|'table',id:string}){
- const [payment,setPayment]=useState<PaymentData|null>(null),[table,setTable]=useState<TableData|null>(null),[error,setError]=useState(''),[approved,setApproved]=useState(false),[busy,setBusy]=useState(false);
- async function load(){try{const data=await api((kind==='pay'?'pay/':'tables/')+id);if(kind==='pay')setPayment(data);else setTable(data)}catch(e){setError((e as Error).message)}}
- useEffect(()=>{void load();const timer=setInterval(()=>void load(),5000);return()=>clearInterval(timer)},[id,kind]);
- const restaurant=payment?.restaurant??table?.receipt.restaurant,number=payment?.table??table?.number,total=payment?.total??table?.receipt.total??0,paid=payment?.paid??table?.paid??0;
- return <div className="guest-page"><header className="guest-header"><Brand/><span className="sandbox-badge"><i/>Sandbox {kind==='pay'?'checkout':'table'}</span></header><main className="guest-main">{error&&<div className="alert error" role="alert"><TriangleAlert size={17}/>{error}</div>}{!payment&&!table?<div className="loading">{error?'Ask the restaurant for a valid link.':<><LoaderCircle className="spin"/>Opening your invitation…</>}</div>:<><div className="guest-intro"><span className={'guest-emblem '+(payment?.verified?'settled':'')}>{payment?.verified?<CheckCircle2 size={29}/>:<ReceiptText size={29}/>}</span><div className="eyebrow">{restaurant?.toUpperCase()} · TABLE {number}</div><h1>{payment?(payment.verified?'All settled, ':'Your share, ')+payment.name+'.':'Welcome to the table.'}</h1><p>{payment?'Just your items. Your fair share. Paid directly to the restaurant.':'Good food deserves a simple finish.'}</p></div><section className="panel guest-card"><div className="guest-total"><span>{payment?.verified?'PAYMENT VERIFIED':payment?'YOUR SHARE':'YOUR TABLE’S BILL'}</span><strong>{money(payment?.amount??total)}<small>USD</small></strong><span className={'status '+(payment?.verified||table?.closed?'paid':'')}>{payment?.verified?'PayPal capture verified':table?.closed?'Table settled':'Independent merchant payment'}</span></div><div className="guest-items"><div className="kicker">{payment?'YOUR ITEMS & SHARED PORTIONS':'AT THE TABLE'}</div>{(payment?.detail.items??table?.receipt.items??[]).map((item,index)=><div key={index}><span>{item.name}</span><strong>{item.amount===null?'Review needed':money(item.amount)}</strong></div>)}{(['tax','service','tip','discount'] as const).map(key=>{const value=payment?payment.detail[key]:table!.receipt[key];if(!value)return null;return <div className={key==='tax'?'guest-charge':''} key={key}><span>{key==='service'?'Service charge':key[0].toUpperCase()+key.slice(1)}</span><strong>{key==='discount'?'−':''}{money(value)}</strong></div>})}</div>
- {payment?<div className="checkout-area">{payment.verified?<div className="payment-success"><ShieldCheck size={22}/><div><strong>Your payment is confirmed.</strong><p>Capture: {payment.captureId}</p><p>This invitation cannot charge you again.</p></div></div>:!payment.reviewed?<><label className="approval"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I reviewed these items and approve my {money(payment.amount)} share. I will authorize payment separately in PayPal.</span></label><button className="button primary wide" disabled={!approved||busy} onClick={async()=>{setBusy(true);try{await api('pay/'+id+'/review',{});await load()}catch(e){setError((e as Error).message)}finally{setBusy(false)}}}>{busy?<LoaderCircle className="spin" size={16}/>:<CheckCircle2 size={16}/>}Approve my share</button></>:<Checkout token={id} payment={payment} onUpdate={load} onError={setError}/>}<p className="checkout-privacy">Only PayPal handles payment details.<br/>Sandbox test accounts only. No real payments.</p></div>:<div className="table-note"><ShieldCheck size={24}/><strong>Your share is personal.</strong><p>Ask the restaurant for your unique payment invitation after everyone reviews the split.</p></div>}
- </section><div className="guest-progress"><div><strong>{payment?.closed||table?.closed?'Everyone’s settled.':'A little closer to settled.'}</strong><span>{money(paid)} of {money(total)} verified</span></div><div className="progress-track"><i style={{width:paid/total*100+'%'}}/></div>{payment&&<a href={'/table/'+payment.bill}>View the table’s live bill</a>}{table?.diners.map((d,index)=><div className="table-diner" key={index}><span>{d.name}</span><strong>{money(d.amount)}</strong><span className={'status '+(d.verified?'paid':'')}>{d.verified?'Paid · verified':'Awaiting payment'}</span></div>)}</div><p className="guest-disclaimer">The Olive Room is fictional. AquilaTab is an independent prototype,<br/>not affiliated with PayPal. All checkout is Sandbox-only.</p></>}</main></div>
+"use client";
+import { useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  LoaderCircle,
+  LockKeyhole,
+  ReceiptText,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react";
+import Checkout from "./checkout";
+import { Brand } from "./brand";
+import { api } from "@/lib/client";
+import { money, type Receipt } from "@/lib/core";
+export type PaymentData = {
+  name: string;
+  amount: number;
+  detail: {
+    subtotal: number;
+    tax: number;
+    service: number;
+    tip: number;
+    discount: number;
+    items: { name: string; amount: number }[];
+  };
+  reviewed: boolean;
+  verified: boolean;
+  state: string;
+  restaurant: string;
+  table: number;
+  bill: string;
+  paid: number;
+  total: number;
+  outstanding: number;
+  closed: boolean;
+  captureId: string | null;
+  paypalReady: boolean;
+};
+type TableData = {
+  id: string;
+  number: number;
+  receipt: Receipt;
+  paid: number;
+  outstanding: number;
+  closed: boolean;
+  diners: { name: string; amount: number; verified: boolean; state: string }[];
+};
+export default function Guest({
+  kind,
+  id,
+}: {
+  kind: "pay" | "table";
+  id: string;
+}) {
+  const [payment, setPayment] = useState<PaymentData | null>(null),
+    [table, setTable] = useState<TableData | null>(null),
+    [error, setError] = useState(""),
+    [approved, setApproved] = useState(false),
+    [busy, setBusy] = useState(false);
+  async function load() {
+    try {
+      const data = await api((kind === "pay" ? "pay/" : "tables/") + id);
+      if (kind === "pay") setPayment(data);
+      else setTable(data);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), 5000);
+    return () => clearInterval(timer);
+  }, [id, kind]);
+  const restaurant = payment?.restaurant ?? table?.receipt.restaurant,
+    number = payment?.table ?? table?.number,
+    total = payment?.total ?? table?.receipt.total ?? 0,
+    paid = payment?.paid ?? table?.paid ?? 0;
+  return (
+    <div className="guest-page">
+      <header className="guest-header">
+        <Brand />
+        <span className="sandbox-badge">
+          <i />
+          Sandbox {kind === "pay" ? "checkout" : "table"}
+        </span>
+      </header>
+      <main className="guest-main">
+        {error && (
+          <div className="alert error" role="alert">
+            <TriangleAlert size={17} />
+            {error}
+          </div>
+        )}
+        {!payment && !table ? (
+          <div className="loading">
+            {error ? (
+              "Ask the restaurant for a valid link."
+            ) : (
+              <>
+                <LoaderCircle className="spin" />
+                Opening your invitation…
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="guest-intro">
+              <span
+                className={
+                  "guest-emblem " + (payment?.verified ? "settled" : "")
+                }
+              >
+                {payment?.verified ? (
+                  <CheckCircle2 size={29} />
+                ) : (
+                  <ReceiptText size={29} />
+                )}
+              </span>
+              <div className="eyebrow">
+                {restaurant?.toUpperCase()} · TABLE {number}
+              </div>
+              <h1>
+                {payment
+                  ? (payment.verified ? "All settled, " : "Your share, ") +
+                    payment.name +
+                    "."
+                  : "Welcome to the table."}
+              </h1>
+              <p>
+                {payment
+                  ? "Just your items. Your fair share. Paid directly to the restaurant."
+                  : "Good food deserves a simple finish."}
+              </p>
+            </div>
+            <section className="panel guest-card">
+              <div className="guest-total">
+                <span>
+                  {payment?.verified
+                    ? "PAYMENT VERIFIED"
+                    : payment
+                      ? "YOUR SHARE"
+                      : "YOUR TABLE’S BILL"}
+                </span>
+                <strong>
+                  {money(payment?.amount ?? total)}
+                  <small>USD</small>
+                </strong>
+                <span
+                  className={
+                    "status " +
+                    (payment?.verified || table?.closed ? "paid" : "")
+                  }
+                >
+                  {payment?.verified
+                    ? "PayPal capture verified"
+                    : table?.closed
+                      ? "Table settled"
+                      : "Independent merchant payment"}
+                </span>
+              </div>
+              <div className="guest-items">
+                <div className="kicker">
+                  {payment ? "YOUR ITEMS & SHARED PORTIONS" : "AT THE TABLE"}
+                </div>
+                {(payment?.detail.items ?? table?.receipt.items ?? []).map(
+                  (item, index) => (
+                    <div key={index}>
+                      <span>{item.name}</span>
+                      <strong>
+                        {item.amount === null
+                          ? "Review needed"
+                          : money(item.amount)}
+                      </strong>
+                    </div>
+                  ),
+                )}
+                {(["tax", "service", "tip", "discount"] as const).map((key) => {
+                  const value = payment
+                    ? payment.detail[key]
+                    : table!.receipt[key];
+                  if (!value) return null;
+                  return (
+                    <div
+                      className={key === "tax" ? "guest-charge" : ""}
+                      key={key}
+                    >
+                      <span>
+                        {key === "service"
+                          ? "Service charge"
+                          : key[0].toUpperCase() + key.slice(1)}
+                      </span>
+                      <strong>
+                        {key === "discount" ? "−" : ""}
+                        {money(value)}
+                      </strong>
+                    </div>
+                  );
+                })}
+              </div>
+              {payment ? (
+                <div className="checkout-area">
+                  {payment.verified ? (
+                    <div className="payment-success">
+                      <ShieldCheck size={22} />
+                      <div>
+                        <strong>Your payment is confirmed.</strong>
+                        <p>Capture: {payment.captureId}</p>
+                        <p>This invitation cannot charge you again.</p>
+                      </div>
+                    </div>
+                  ) : !payment.reviewed ? (
+                    <>
+                      <label className="approval">
+                        <input
+                          type="checkbox"
+                          checked={approved}
+                          onChange={(e) => setApproved(e.target.checked)}
+                        />
+                        <span>
+                          I reviewed these items and approve my{" "}
+                          {money(payment.amount)} share. I will authorize
+                          payment separately in PayPal.
+                        </span>
+                      </label>
+                      <button
+                        className="button primary wide"
+                        disabled={!approved || busy}
+                        onClick={async () => {
+                          setBusy(true);
+                          try {
+                            await api("pay/" + id + "/review", {});
+                            await load();
+                          } catch (e) {
+                            setError((e as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        {busy ? (
+                          <LoaderCircle className="spin" size={16} />
+                        ) : (
+                          <CheckCircle2 size={16} />
+                        )}
+                        Approve my share
+                      </button>
+                    </>
+                  ) : (
+                    <Checkout
+                      token={id}
+                      payment={payment}
+                      onUpdate={load}
+                      onError={setError}
+                    />
+                  )}
+                  <p className="checkout-privacy">
+                    Only PayPal handles payment details.
+                    <br />
+                    Sandbox test accounts only. No real payments.
+                  </p>
+                </div>
+              ) : (
+                <div className="table-note">
+                  <ShieldCheck size={24} />
+                  <strong>Your share is personal.</strong>
+                  <p>
+                    Ask the restaurant for your unique payment invitation after
+                    everyone reviews the split.
+                  </p>
+                </div>
+              )}
+            </section>
+            <div className="guest-progress">
+              <div>
+                <strong>
+                  {payment?.closed || table?.closed
+                    ? "Everyone’s settled."
+                    : "A little closer to settled."}
+                </strong>
+                <span>
+                  {money(paid)} of {money(total)} verified
+                </span>
+              </div>
+              <div className="progress-track">
+                <i style={{ width: (paid / total) * 100 + "%" }} />
+              </div>
+              {payment && (
+                <a href={"/table/" + payment.bill}>
+                  View the table’s live bill
+                </a>
+              )}
+              {table?.diners.map((d, index) => (
+                <div className="table-diner" key={index}>
+                  <span>{d.name}</span>
+                  <strong>{money(d.amount)}</strong>
+                  <span className={"status " + (d.verified ? "paid" : "")}>
+                    {d.verified ? "Paid · verified" : "Awaiting payment"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="guest-disclaimer">
+              The Olive Room is fictional. AquilaTab is an independent
+              prototype,
+              <br />
+              not affiliated with PayPal. All checkout is Sandbox-only.
+            </p>
+          </>
+        )}
+      </main>
+    </div>
+  );
 }
