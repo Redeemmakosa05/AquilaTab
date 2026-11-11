@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import {billSchema,calculate,Fault} from '@/lib/core';
 import {bill,db,event,hash,invitation,invitationToken,owned,rateLimit,seed,shares,snapshot,transaction,uid,type BillRow} from '@/lib/db';
+import {extract,interpret} from '@/lib/ai';
 import {json,merchant,reply,sameOrigin} from '@/lib/http';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -8,10 +9,12 @@ async function handle(req:Request,path:string[]){
  const [kind,id,action]=path,method=req.method;
  if(method==='POST')sameOrigin(req);
  if(kind==='dashboard'&&method==='GET'){const owner=await merchant(true);const rows=db().prepare('SELECT * FROM bills WHERE owner=? ORDER BY created DESC').all(owner) as BillRow[];return reply({bills:rows.map(snapshot),config:{ai:!!process.env.OPENAI_API_KEY,paypal:false,webhook:false}})}
+ if(kind==='receipt'&&method==='POST'){const owner=await merchant();rateLimit(owner+':ai',6);if(Number(req.headers.get('content-length')??0)>9*1024*1024)throw new Fault(413,'Upload too large');const raw=await req.arrayBuffer();if(raw.byteLength>9*1024*1024)throw new Fault(413,'Upload too large');const form=await new Response(raw,{headers:{'Content-Type':req.headers.get('content-type')??''}}).formData();const file=form.get('file');if(!(file instanceof File))throw new Fault(422,'Choose a receipt image');return reply({receipt:await extract(file)})}
  if(kind==='tables'&&!id&&method==='POST'){const owner=await merchant();rateLimit(owner+':new',5);return reply({id:seed(owner)},201)}
  if(kind==='tables'&&id&&method==='GET'){const row=bill(id),view=snapshot(row);return reply({id,number:row.number,receipt:view.data.receipt,paid:view.paid,outstanding:view.outstanding,closed:view.closed,diners:view.shares.map(s=>({name:s.name,amount:s.amount,state:s.state,verified:s.verified}))})}
  if(kind==='tables'&&id&&method==='POST'){
   const owner=await merchant();rateLimit(owner+':write');const row=owned(id,owner);
+  if(action==='ai'){if(row.locked)throw new Fault(409,'Confirmed bill is locked');rateLimit(owner+':ai',6);const body=z.object({instruction:z.string().trim().min(3).max(2000)}).parse(await json(req));const data=billSchema.parse(JSON.parse(row.data));const proposed=await interpret(body.instruction,data);calculate({...data,...proposed,mode:'items'});return reply({...proposed,version:row.version})}
   if(action==='save'){if(row.locked)throw new Fault(409,'Confirmed payment amounts are locked');const body=z.object({version:z.number().int(),data:billSchema}).parse(await json(req));const result=db().prepare('UPDATE bills SET data=?,version=version+1 WHERE id=? AND owner=? AND version=? AND locked=0').run(JSON.stringify(body.data),id,owner,body.version);if(!result.changes)throw new Fault(409,'This bill changed in another window. Reload before editing.');event(id,'BILL_UPDATED','Receipt and allocations saved');return reply(snapshot(bill(id)))}
   if(action==='finalize'){const body=z.object({version:z.number().int(),approved:z.literal(true)}).parse(await json(req));return reply(transaction(()=>{const current=owned(id,owner);if(current.locked||current.version!==body.version)throw new Fault(409,'Bill changed or already confirmed');const allocations=calculate(JSON.parse(current.data)),expires=Date.now()+4*3600000;for(const share of allocations){const sid=uid(),token=invitationToken(sid,expires);db().prepare('INSERT INTO shares(id,bill,name,amount,detail,token_hash,expires,updated) VALUES(?,?,?,?,?,?,?,?)').run(sid,id,share.name,share.total,JSON.stringify(share),hash(token),expires,Date.now())}db().prepare('UPDATE bills SET locked=1,version=version+1 WHERE id=?').run(id);event(id,'SPLIT_CONFIRMED','Reviewed split locked; independent invitations created');return snapshot(bill(id))}))}
  }
