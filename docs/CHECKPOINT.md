@@ -9,3 +9,6 @@ No provider credentials are configured. Managed Sites setup and browser helpers 
 
 Milestone 1 verified remotely: 663c96a755c3a16fa31bdd64782ef030fee16b0d.
 Milestone 2: actual OpenAI multimodal and strict structured allocation calls added. Safe image validation, USD validation, uncertain-field review and deterministic proposal validation implemented. 18 tests and TypeScript pass; real AI calls blocked by missing key.
+
+Milestone 2 verified remotely: ec8750706bbe9ce5a4b113ff12283c05341d682c.
+Milestone 3: official PayPal SDK v6, sandbox-only OAuth/browser-safe client tokens, Orders v2, canonical capture validation, authenticated/deduplicated webhooks, cancellation, denial and refund states implemented. 34 tests, TypeScript and production build pass. Provider tests mock responses; genuine AI and PayPal calls remain blocked by absent credentials.
