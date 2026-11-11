@@ -375,6 +375,7 @@ export default function Workspace() {
             </div>
             <button
               className="button primary"
+              aria-label="Scan a receipt"
               disabled={locked || !!busy}
               onClick={() => {
                 setView("receipt");

@@ -17,7 +17,7 @@ import {
   type ShareRow,
 } from "../lib/db";
 import {
-  browserToken,
+  checkoutConfig,
   cancelOrder,
   captureOrder,
   createOrder,
@@ -253,12 +253,12 @@ describe("PayPal Sandbox contracts, mocked only", () => {
     });
     expect(snapshot(bill(share.bill)).paid).toBe(0);
   });
-  it("issues a browser-safe v6 token using the correct OAuth response type", async () => {
-    const fetcher = mock([{ access_token: "browser-token" }]);
-    expect(await browserToken()).toEqual({ clientToken: "browser-token" });
-    const calls = fetcher.mock.calls as unknown as [string, RequestInit][];
-    expect(calls[0][1].body).toContain("response_type=client_token");
-    expect(calls[0][1].body).toContain("domains%5B%5D=");
+  it("exposes only the public client ID for standard v6 checkout", () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    expect(checkoutConfig()).toEqual({ clientId: "test-client" });
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(JSON.stringify(checkoutConfig())).not.toContain("test-secret");
   });
   it("rejects missing or invalid webhook signatures", async () => {
     await expect(

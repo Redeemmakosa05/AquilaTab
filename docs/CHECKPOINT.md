@@ -18,3 +18,6 @@ Milestone 4: 49 tests pass, including application authorization, CSRF, immutable
 
 Milestone 4 verified remotely: c5bf4fc288fb4cc78ae9647aed900954394b7189.
 Milestone 5: comprehensive README, setup checklist, PayPal SDK/API details, exact verification record, Devpost description, under-three-minute demo plan and untested Docker deployment examples prepared. Production dependency audit reports zero vulnerabilities. Final GitHub source and downloadable archive verification must follow this commit. No live provider demonstration or deployment is claimed.
+
+Continuation from ace78c6b2e1eef22c9b6ce5976847773e3c5c709: Chromium desktop/mobile QA now runs. A mobile scan action accessible-name defect was reproduced and fixed; 42 browser checks pass at 1440x1000, 390x844 and 360x800. PayPal standard SDK authentication changed to the documented public client ID, with secrets retained server-side. Unreadable AI grand totals now remain nullable and are rejected explicitly. 50 tests, TypeScript, production build and HTTP smoke checks pass.
+User now requires strictly $0: Render plan cancelled before any resource creation; no paid services enabled. Next: Gemini free-tier adapter with explicit billing-disabled confirmation, free tunnel investigation, judge-run instructions and honest demo/submission materials. Live provider credentials remain absent.

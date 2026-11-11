@@ -15,16 +15,9 @@ function configured() {
       "PayPal Sandbox needs a client ID, secret and eligible test merchant ID on the server.",
     );
 }
-async function oauth(browser = false) {
+async function oauth() {
   configured();
   const body = new URLSearchParams({ grant_type: "client_credentials" });
-  if (browser) {
-    body.set("response_type", "client_token");
-    body.append(
-      "domains[]",
-      new URL(process.env.APP_URL || "http://localhost:3000").hostname,
-    );
-  }
   const response = await fetch(base + "/v1/oauth2/token", {
     method: "POST",
     headers: {
@@ -48,8 +41,9 @@ async function oauth(browser = false) {
     throw new Fault(502, "PayPal returned an invalid authentication response");
   return data.access_token as string;
 }
-export async function browserToken() {
-  return { clientToken: await oauth(true) };
+export function checkoutConfig() {
+  configured();
+  return { clientId: process.env.PAYPAL_CLIENT_ID! };
 }
 export async function paypal(
   path: string,

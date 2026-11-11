@@ -17,7 +17,7 @@ import {
   type BillRow,
 } from "@/lib/db";
 import {
-  browserToken,
+  checkoutConfig,
   cancelOrder,
   captureOrder,
   createOrder,
@@ -208,7 +208,7 @@ async function handle(req: Request, path: string[]) {
       if (action === "cancel") return reply(await cancelOrder(share));
       if (!share.reviewed)
         throw new Fault(409, "Review your share before checkout");
-      if (action === "sdk") return reply(await browserToken());
+      if (action === "sdk") return reply(checkoutConfig());
       if (action === "order") return reply(await createOrder(share));
       if (action === "capture") {
         const body = z

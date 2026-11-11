@@ -45,7 +45,7 @@ export default function Checkout({
         ]);
         if (!sdk) throw new Error("PayPal SDK failed to load");
         const instance = await sdk.createInstance({
-          clientToken: auth.clientToken,
+          clientId: auth.clientId,
           components: ["paypal-payments"],
           pageType: "checkout",
         });

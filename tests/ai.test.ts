@@ -50,6 +50,15 @@ describe("AI provider contracts, mocked only", () => {
       await expect(extract(image())).rejects.toThrow("USD");
     }
   });
+  it("rejects unreadable totals without forcing the model to invent money", async () => {
+    const fetcher = mock({ ...sample.receipt, total: null });
+    await expect(extract(image())).rejects.toThrow("grand total is unreadable");
+    const calls = fetcher.mock.calls as unknown as [string, RequestInit][];
+    const body = JSON.parse(calls[0][1].body as string);
+    expect(
+      body.response_format.json_schema.schema.properties.total.anyOf,
+    ).toContainEqual({ type: "null" });
+  });
   it("rejects invalid financial schemas", async () => {
     mock({ ...sample.receipt, total: 1.75 });
     await expect(extract(image())).rejects.toThrow();
