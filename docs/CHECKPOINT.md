@@ -15,3 +15,6 @@ Milestone 3: official PayPal SDK v6, sandbox-only OAuth/browser-safe client toke
 
 Milestone 3 verified remotely: 919fc46511851eea7dc6497cbedd117bc1694549.
 Milestone 4: 49 tests pass, including application authorization, CSRF, immutable bills, independent diner review, order substitution, cancellations, denials, exact partial/full settlement and webhook replay. TypeScript, production build and five real HTTP smoke checks pass. A full process restart preserves sessions, locked bills, invitation signatures and approvals. Source formatted for review and interface text contrast improved. Real provider calls and visual browser QA remain unverified; required managed browser tool is unavailable.
+
+Milestone 4 verified remotely: c5bf4fc288fb4cc78ae9647aed900954394b7189.
+Milestone 5: comprehensive README, setup checklist, PayPal SDK/API details, exact verification record, Devpost description, under-three-minute demo plan and untested Docker deployment examples prepared. Production dependency audit reports zero vulnerabilities. Final GitHub source and downloadable archive verification must follow this commit. No live provider demonstration or deployment is claimed.
